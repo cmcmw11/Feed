@@ -1,102 +1,80 @@
 <!DOCTYPE html>
 <html lang="th">
 <head>
-  <meta charset="UTF-8">
-  <title>สมัครสมาชิก - โลกสวย Social</title>
-  <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-auth.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-firestore.js"></script>
-  <style>
-    body {
-      font-family: 'Arial', sans-serif;
-      background: linear-gradient(135deg, #ffd6f6, #d6eaff, #e8d6ff);
-      display: flex;
-      justify-content: center;
-      padding-top: 50px;
-    }
-    .container {
-      max-width: 400px;
-      width: 100%;
-      background: white;
-      border-radius: 20px;
-      padding: 25px;
-      box-shadow: 0 4px 20px rgba(0,0,0,0.1);
-    }
-    h2 { text-align: center; margin-bottom: 15px; color: #555; }
-    input, select {
-      width: 100%; padding: 10px; margin: 8px 0;
-      border-radius: 10px; border: 1px solid #ddd;
-    }
-    button {
-      width: 100%; padding: 12px; border: none; border-radius: 12px;
-      cursor: pointer; margin-top: 8px; background: #7caeff; color: white; font-size: 16px;
-    }
-    button:hover { background: #5c8cff; }
-  </style>
+<meta charset="UTF-8">
+<title>สมัครสมาชิก - โลกสวย Social</title>
+<script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
+<script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-auth.js"></script>
+<script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-firestore.js"></script>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Quicksand:wght@400;600&display=swap');
+body { font-family:'Quicksand',sans-serif; background:#f0f2f5; display:flex; justify-content:center; padding-top:50px; }
+.container { background:#fff; padding:20px; border-radius:15px; box-shadow:0 4px 15px rgba(0,0,0,0.1); width:350px; }
+input, select { width:100%; padding:10px; margin:8px 0; border-radius:10px; border:1px solid #ddd; font-size:14px; }
+button { width:100%; padding:10px; border:none; border-radius:10px; background:#7caeff; color:white; font-size:16px; cursor:pointer; }
+button:hover { background:#5c8cff; }
+</style>
 </head>
 <body>
-  <div class="container">
-    <h2>สมัครสมาชิก</h2>
-    <input type="text" id="username" placeholder="Username" required>
-    <select id="gender" required>
-      <option value="">เลือกเพศ</option>
-      <option value="ชาย">ชาย</option>
-      <option value="หญิง">หญิง</option>
-      <option value="อื่นๆ">อื่นๆ</option>
-    </select>
-    <input type="date" id="birthdate" required>
-    <input type="email" id="email" placeholder="Email" required>
-    <input type="password" id="password" placeholder="รหัสผ่าน" required>
-    <button id="registerBtn">สมัครสมาชิก</button>
-  </div>
+<div class="container">
+  <h2>สมัครสมาชิก</h2>
+  <input type="text" id="username" placeholder="ชื่อผู้ใช้">
+  <select id="gender">
+    <option value="">เลือกเพศ</option>
+    <option value="ชาย">ชาย</option>
+    <option value="หญิง">หญิง</option>
+    <option value="อื่นๆ">อื่นๆ</option>
+  </select>
+  <input type="date" id="birthdate" placeholder="วันเกิด">
+  <input type="password" id="password" placeholder="รหัสผ่าน">
+  <button id="registerBtn">สมัครสมาชิก</button>
+</div>
 
-  <script>
-    // --- Firebase Config ---
-    const firebaseConfig = {
-      apiKey: "AIzaSyCXcq9coy4Ah39DTzN9OmZc-nm8JBHPapA",
-      authDomain: "feed-32f94.firebaseapp.com",
-      projectId: "feed-32f94",
-      storageBucket: "feed-32f94.appspot.com",
-      messagingSenderId: "939495314483",
-      appId: "1:939495314483:web:2eacab83fb89a67812ff46",
-      measurementId: "G-M5T6KE9YSE"
-    };
-    firebase.initializeApp(firebaseConfig);
-    const auth = firebase.auth();
-    const db = firebase.firestore();
+<script>
+const firebaseConfig = {
+  apiKey: "AIzaSyCXcq9coy4Ah39DTzN9OmZc-nm8JBHPapA",
+  authDomain: "feed-32f94.firebaseapp.com",
+  projectId: "feed-32f94",
+  storageBucket: "feed-32f94.appspot.com",
+  messagingSenderId: "939495314483",
+  appId: "1:939495314483:web:2eacab83fb89a67812ff46",
+  measurementId: "G-M5T6KE9YSE"
+};
+firebase.initializeApp(firebaseConfig);
+const auth = firebase.auth();
+const db = firebase.firestore();
 
-    document.getElementById('registerBtn').addEventListener('click', ()=>{
-      const username = document.getElementById('username').value.trim();
-      const gender = document.getElementById('gender').value;
-      const birthdate = document.getElementById('birthdate').value;
-      const email = document.getElementById('email').value.trim();
-      const password = document.getElementById('password').value;
+document.getElementById('registerBtn').addEventListener('click', async()=>{
+  const username = document.getElementById('username').value.trim();
+  const gender = document.getElementById('gender').value;
+  const birthdate = document.getElementById('birthdate').value;
+  const password = document.getElementById('password').value.trim();
 
-      if(!username || !gender || !birthdate || !email || !password){
-        alert("กรุณากรอกข้อมูลให้ครบ");
-        return;
-      }
+  if(!username || !gender || !birthdate || !password){
+    alert("กรุณากรอกทุกช่องให้ครบ");
+    return;
+  }
 
-      // --- สร้างบัญชี Authentication ---
-      auth.createUserWithEmailAndPassword(email, password)
-      .then(userCredential=>{
-        const user = userCredential.user;
-        // --- สร้าง doc ใน users collection ---
-        return db.collection('users').doc(user.uid).set({
-          username: username,
-          gender: gender,
-          birthdate: birthdate,
-          bio: ""
-        });
-      })
-      .then(()=>{
-        alert("สมัครสมาชิกสำเร็จ ✅");
-        window.location.href = "login.html";
-      })
-      .catch(err=>{
-        alert("สมัครสมาชิกไม่สำเร็จ: " + err.message);
-      });
+  try{
+    // ใช้รหัสผ่าน + UID อัตโนมัติสร้าง user
+    const userCredential = await auth.createUserWithEmailAndPassword(username+"@example.com", password);
+    const user = userCredential.user;
+
+    // สร้าง doc ใน Firestore
+    await db.collection("users").doc(user.uid).set({
+      username: username,
+      gender: gender,
+      birthdate: birthdate,
+      bio: ""
     });
-  </script>
+
+    alert("สมัครสมาชิกเรียบร้อย ✅");
+    window.location.href="login.html";
+  }catch(err){
+    alert("เกิดข้อผิดพลาด: "+err.message);
+  }
+});
+</script>
 </body>
 </html>
+
