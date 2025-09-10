@@ -10,61 +10,44 @@
     body {
       font-family: 'Arial', sans-serif;
       background: linear-gradient(135deg, #ffd6f6, #d6eaff, #e8d6ff);
-      min-height: 100vh;
-      margin: 0;
       display: flex;
-      align-items: center;
       justify-content: center;
+      padding-top: 50px;
     }
     .container {
-      max-width: 420px;
+      max-width: 400px;
+      width: 100%;
       background: white;
       border-radius: 20px;
-      padding: 30px;
+      padding: 25px;
       box-shadow: 0 4px 20px rgba(0,0,0,0.1);
     }
-    h2 { text-align: center; color: #555; margin-bottom: 20px; }
+    h2 { text-align: center; margin-bottom: 15px; color: #555; }
     input, select {
-      width: 100%; padding: 12px; margin: 8px 0;
+      width: 100%; padding: 10px; margin: 8px 0;
       border-radius: 10px; border: 1px solid #ddd;
     }
     button {
-      width: 100%;
-      padding: 12px;
-      background: #ff80c0;
-      color: white;
-      border: none;
-      border-radius: 12px;
-      font-size: 16px;
-      cursor: pointer;
-      transition: 0.3s;
+      width: 100%; padding: 12px; border: none; border-radius: 12px;
+      cursor: pointer; margin-top: 8px; background: #7caeff; color: white; font-size: 16px;
     }
-    button:hover { background: #ff5aa0; }
-    .link {
-      margin-top: 15px;
-      text-align: center;
-    }
-    .link a { color: #7caeff; text-decoration: none; }
+    button:hover { background: #5c8cff; }
   </style>
 </head>
 <body>
   <div class="container">
-    <h2>สร้างบัญชีใหม่</h2>
-    <form id="registerForm">
-      <input type="text" id="regUsername" placeholder="Username" required>
-      <input type="password" id="regPassword" placeholder="Password" required>
-      <select id="regGender" required>
-        <option value="">-- เลือกเพศ --</option>
-        <option value="male">ชาย</option>
-        <option value="female">หญิง</option>
-        <option value="other">อื่นๆ</option>
-      </select>
-      <input type="date" id="regBirthdate" required>
-      <button type="submit">สมัครสมาชิก</button>
-    </form>
-    <div class="link">
-      <p>มีบัญชีอยู่แล้ว? <a href="login.html">เข้าสู่ระบบ</a></p>
-    </div>
+    <h2>สมัครสมาชิก</h2>
+    <input type="text" id="username" placeholder="Username" required>
+    <select id="gender" required>
+      <option value="">เลือกเพศ</option>
+      <option value="ชาย">ชาย</option>
+      <option value="หญิง">หญิง</option>
+      <option value="อื่นๆ">อื่นๆ</option>
+    </select>
+    <input type="date" id="birthdate" required>
+    <input type="email" id="email" placeholder="Email" required>
+    <input type="password" id="password" placeholder="รหัสผ่าน" required>
+    <button id="registerBtn">สมัครสมาชิก</button>
   </div>
 
   <script>
@@ -82,30 +65,37 @@
     const auth = firebase.auth();
     const db = firebase.firestore();
 
-    // --- Register ---
-    document.getElementById('registerForm').addEventListener('submit', e=>{
-      e.preventDefault();
-      const username=document.getElementById('regUsername').value.trim();
-      const password=document.getElementById('regPassword').value.trim();
-      const gender=document.getElementById('regGender').value;
-      const birthdate=document.getElementById('regBirthdate').value;
+    document.getElementById('registerBtn').addEventListener('click', ()=>{
+      const username = document.getElementById('username').value.trim();
+      const gender = document.getElementById('gender').value;
+      const birthdate = document.getElementById('birthdate').value;
+      const email = document.getElementById('email').value.trim();
+      const password = document.getElementById('password').value;
 
-      const email = username + "@example.com"; // ใช้ username เป็น email จำลอง
+      if(!username || !gender || !birthdate || !email || !password){
+        alert("กรุณากรอกข้อมูลให้ครบ");
+        return;
+      }
 
+      // --- สร้างบัญชี Authentication ---
       auth.createUserWithEmailAndPassword(email, password)
-        .then(userCredential=>{
-          const user=userCredential.user;
-          return db.collection('users').doc(user.uid).set({
-            username, gender, birthdate, bio: ""
-          });
-        })
-        .then(()=>{
-          alert("สมัครสมาชิกสำเร็จ ✅");
-          window.location.href="login.html";
-        })
-        .catch(err=>{
-          alert("สมัครสมาชิกไม่สำเร็จ: " + err.message);
+      .then(userCredential=>{
+        const user = userCredential.user;
+        // --- สร้าง doc ใน users collection ---
+        return db.collection('users').doc(user.uid).set({
+          username: username,
+          gender: gender,
+          birthdate: birthdate,
+          bio: ""
         });
+      })
+      .then(()=>{
+        alert("สมัครสมาชิกสำเร็จ ✅");
+        window.location.href = "login.html";
+      })
+      .catch(err=>{
+        alert("สมัครสมาชิกไม่สำเร็จ: " + err.message);
+      });
     });
   </script>
 </body>
