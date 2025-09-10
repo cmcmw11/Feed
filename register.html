@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8">
+  <title>สมัครสมาชิก - โลกสวย Social</title>
+  <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-auth.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-firestore.js"></script>
+  <style>
+    body {
+      font-family: 'Arial', sans-serif;
+      background: linear-gradient(135deg, #ffd6f6, #d6eaff, #e8d6ff);
+      min-height: 100vh;
+      margin: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .container {
+      max-width: 420px;
+      background: white;
+      border-radius: 20px;
+      padding: 30px;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+    }
+    h2 { text-align: center; color: #555; margin-bottom: 20px; }
+    input, select {
+      width: 100%; padding: 12px; margin: 8px 0;
+      border-radius: 10px; border: 1px solid #ddd;
+    }
+    button {
+      width: 100%;
+      padding: 12px;
+      background: #ff80c0;
+      color: white;
+      border: none;
+      border-radius: 12px;
+      font-size: 16px;
+      cursor: pointer;
+      transition: 0.3s;
+    }
+    button:hover { background: #ff5aa0; }
+    .link {
+      margin-top: 15px;
+      text-align: center;
+    }
+    .link a { color: #7caeff; text-decoration: none; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h2>สร้างบัญชีใหม่</h2>
+    <form id="registerForm">
+      <input type="text" id="regUsername" placeholder="Username" required>
+      <input type="password" id="regPassword" placeholder="Password" required>
+      <select id="regGender" required>
+        <option value="">-- เลือกเพศ --</option>
+        <option value="male">ชาย</option>
+        <option value="female">หญิง</option>
+        <option value="other">อื่นๆ</option>
+      </select>
+      <input type="date" id="regBirthdate" required>
+      <button type="submit">สมัครสมาชิก</button>
+    </form>
+    <div class="link">
+      <p>มีบัญชีอยู่แล้ว? <a href="login.html">เข้าสู่ระบบ</a></p>
+    </div>
+  </div>
+
+  <script>
+    // --- Firebase Config ---
+    const firebaseConfig = {
+      apiKey: "AIzaSyCXcq9coy4Ah39DTzN9OmZc-nm8JBHPapA",
+      authDomain: "feed-32f94.firebaseapp.com",
+      projectId: "feed-32f94",
+      storageBucket: "feed-32f94.appspot.com",
+      messagingSenderId: "939495314483",
+      appId: "1:939495314483:web:2eacab83fb89a67812ff46",
+      measurementId: "G-M5T6KE9YSE"
+    };
+    firebase.initializeApp(firebaseConfig);
+    const auth = firebase.auth();
+    const db = firebase.firestore();
+
+    // --- Register ---
+    document.getElementById('registerForm').addEventListener('submit', e=>{
+      e.preventDefault();
+      const username=document.getElementById('regUsername').value.trim();
+      const password=document.getElementById('regPassword').value.trim();
+      const gender=document.getElementById('regGender').value;
+      const birthdate=document.getElementById('regBirthdate').value;
+
+      const email = username + "@example.com"; // ใช้ username เป็น email จำลอง
+
+      auth.createUserWithEmailAndPassword(email, password)
+        .then(userCredential=>{
+          const user=userCredential.user;
+          return db.collection('users').doc(user.uid).set({
+            username, gender, birthdate, bio: ""
+          });
+        })
+        .then(()=>{
+          alert("สมัครสมาชิกสำเร็จ ✅");
+          window.location.href="login.html";
+        })
+        .catch(err=>{
+          alert("สมัครสมาชิกไม่สำเร็จ: " + err.message);
+        });
+    });
+  </script>
+</body>
+</html>
