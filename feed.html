@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8">
+  <title>Feed - โลกสวย Social</title>
+  <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-auth.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-firestore.js"></script>
+  <style>
+    body {
+      font-family: 'Arial', sans-serif;
+      background: linear-gradient(135deg, #ffd6f6, #d6eaff, #e8d6ff);
+      min-height: 100vh;
+      margin: 0;
+      padding: 0;
+      display: flex;
+      justify-content: center;
+    }
+    .container {
+      max-width: 500px;
+      width: 100%;
+      padding: 20px;
+    }
+    h2 { text-align: center; color: #555; margin-bottom: 20px; }
+    textarea, input {
+      width: 100%; padding: 10px; margin: 5px 0; border-radius: 10px; border: 1px solid #ddd;
+    }
+    button {
+      padding: 10px 15px; border: none; border-radius: 12px; cursor: pointer;
+      margin: 5px 0;
+    }
+    .btn-post { background: #ff80c0; color: white; }
+    .btn-post:hover { background: #ff5aa0; }
+    .post {
+      background: white; border-radius: 15px; padding: 15px;
+      margin-bottom: 15px; box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+    }
+    .actions button {
+      margin-right: 10px; background: #d6a5ff; color: white;
+    }
+    .actions button:hover { background: #c184ff; }
+    .logout-btn { background: #7caeff; color: white; margin-top: 10px; }
+    .logout-btn:hover { background: #5c8cff; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h2>🌸 Feed โลกสวย 🌸</h2>
+
+    <!-- โพสต์ข้อความ -->
+    <form id="postForm">
+      <textarea id="postText" placeholder="เขียนโพสต์..." required></textarea>
+      <input type="text" id="postHashtag" placeholder="#hashtag">
+      <button type="submit" class="btn-post">โพสต์</button>
+    </form>
+
+    <!-- ปุ่ม logout -->
+    <button id="logoutBtn" class="logout-btn">Logout</button>
+
+    <!-- แสดงโพสต์ -->
+    <div id="posts"></div>
+  </div>
+
+  <script>
+    // --- Firebase Config ---
+    const firebaseConfig = {
+      apiKey: "AIzaSyCXcq9coy4Ah39DTzN9OmZc-nm8JBHPapA",
+      authDomain: "feed-32f94.firebaseapp.com",
+      projectId: "feed-32f94",
+      storageBucket: "feed-32f94.appspot.com",
+      messagingSenderId: "939495314483",
+      appId: "1:939495314483:web:2eacab83fb89a67812ff46",
+      measurementId: "G-M5T6KE9YSE"
+    };
+    firebase.initializeApp(firebaseConfig);
+    const auth = firebase.auth();
+    const db = firebase.firestore();
+
+    // --- ตรวจสอบ login ---
+    auth.onAuthStateChanged(user=>{
+      if(!user){
+        window.location.href="login.html";
+      }
+    });
+
+    // --- Logout ---
+    document.getElementById('logoutBtn').addEventListener('click', ()=>{
+      auth.signOut();
+      window.location.href="login.html";
+    });
+
+    // --- Add Post ---
+    document.getElementById('postForm').addEventListener('submit', e=>{
+      e.preventDefault();
+      const user = auth.currentUser;
+      if(!user) return;
+
+      const text = document.getElementById('postText').value.trim();
+      const hashtags = document.getElementById('postHashtag').value.trim().split(" ");
+
+      db.collection("users").doc(user.uid).get().then(doc=>{
+        const data = doc.data();
+        db.collection("posts").add({
+          user_id: user.uid,
+          username: data.username,
+          text,
+          hashtags,
+          timestamp: firebase.firestore.FieldValue.serverTimestamp(),
+          likes: 0,
+          reposts: 0
+        });
+        document.getElementById('postText').value = "";
+        document.getElementById('postHashtag').value = "";
+      });
+    });
+
+    // --- Listen Posts ---
+    db.collection("posts").orderBy("timestamp","desc")
+      .onSnapshot(snapshot=>{
+        const postsDiv = document.getElementById('posts');
+        postsDiv.innerHTML = "";
+        snapshot.forEach(doc=>{
+          const p = doc.data();
+          const postDiv = document.createElement('div');
+          postDiv.className = "post";
+          postDiv.innerHTML = `
+            <p><strong>@${p.username}</strong></p>
+            <p>${p.text}</p>
+            <p style="color:#888;">${(p.hashtags||[]).join(" ")}</p>
+            <div class="actions">
+              <button onclick="likePost('${doc.id}')">❤️ ${p.likes||0}</button>
+              <button onclick="repostPost('${doc.id}')">🔁 ${p.reposts||0}</button>
+            </div>`;
+          postsDiv.appendChild(postDiv);
+        });
+      });
+
+    // --- Like Post ---
+    function likePost(id){
+      const ref = db.collection("posts").doc(id);
+      ref.update({likes: firebase.firestore.FieldValue.increment(1)});
+    }
+
+    // --- Repost Post ---
+    function repostPost(id){
+      const user = auth.currentUser;
+      if(!user) return;
+      const ref = db.collection("posts").doc(id);
+      ref.get().then(doc=>{
+        const data = doc.data();
+        db.collection("posts").add({
+          user_id: user.uid,
+          username: data.username,
+          text: data.text,
+          hashtags: data.hashtags,
+          timestamp: firebase.firestore.FieldValue.serverTimestamp(),
+          likes: 0,
+          reposts: 0,
+          repost_from: id
+        });
+        ref.update({reposts: firebase.firestore.FieldValue.increment(1)});
+      });
+    }
+  </script>
+</body>
+</html>
