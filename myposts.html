@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8">
+  <title>โพสต์ของฉัน - โลกสวย Social</title>
+  <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-auth.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-firestore.js"></script>
+  <style>
+    body {
+      font-family: 'Arial', sans-serif;
+      background: linear-gradient(135deg, #ffd6f6, #d6eaff, #e8d6ff);
+      min-height: 100vh;
+      margin: 0;
+      display: flex;
+      justify-content: center;
+      padding: 20px 0;
+    }
+    .container {
+      max-width: 500px;
+      width: 100%;
+      padding: 20px;
+    }
+    h2 { text-align: center; color: #555; margin-bottom: 20px; }
+    .post {
+      background: white; border-radius: 15px; padding: 15px;
+      margin-bottom: 15px; box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+    }
+    .actions button {
+      margin-right: 8px; padding: 6px 12px; border: none; border-radius: 10px; cursor: pointer; color: white;
+    }
+    .btn-edit { background: #7caeff; }
+    .btn-edit:hover { background: #5c8cff; }
+    .btn-delete { background: #ff6b6b; }
+    .btn-delete:hover { background: #ff4a4a; }
+    .btn-repost { background: #d6a5ff; }
+    .btn-repost:hover { background: #c184ff; }
+    .back-btn { margin-bottom: 10px; padding: 10px 15px; background: #ff80c0; color: white; border: none; border-radius: 12px; cursor: pointer;}
+    .back-btn:hover { background: #ff5aa0; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h2>โพสต์ของฉัน</h2>
+    <button class="back-btn" onclick="goFeed()">← กลับไป Feed</button>
+    <div id="myposts"></div>
+  </div>
+
+  <script>
+    // --- Firebase Config ---
+    const firebaseConfig = {
+      apiKey: "AIzaSyCXcq9coy4Ah39DTzN9OmZc-nm8JBHPapA",
+      authDomain: "feed-32f94.firebaseapp.com",
+      projectId: "feed-32f94",
+      storageBucket: "feed-32f94.appspot.com",
+      messagingSenderId: "939495314483",
+      appId: "1:939495314483:web:2eacab83fb89a67812ff46",
+      measurementId: "G-M5T6KE9YSE"
+    };
+    firebase.initializeApp(firebaseConfig);
+    const auth = firebase.auth();
+    const db = firebase.firestore();
+
+    // --- ตรวจสอบ login ---
+    auth.onAuthStateChanged(user=>{
+      if(!user) window.location.href="login.html";
+      else listenMyPosts(user.uid);
+    });
+
+    // --- กลับ Feed ---
+    function goFeed(){ window.location.href="feed.html"; }
+
+    // --- Listen Posts ของตัวเอง ---
+    function listenMyPosts(uid){
+      db.collection("posts")
+        .where("user_id","==",uid)
+        .orderBy("timestamp","desc")
+        .onSnapshot(snapshot=>{
+          const div = document.getElementById('myposts');
+          div.innerHTML="";
+          snapshot.forEach(doc=>{
+            const p = doc.data();
+            const postDiv = document.createElement('div');
+            postDiv.className="post";
+            postDiv.innerHTML=`
+              <p><strong>@${p.username}</strong></p>
+              <p id="text-${doc.id}">${p.text}</p>
+              <p style="color:#888;">${(p.hashtags||[]).join(" ")}</p>
+              <div class="actions">
+                <button class="btn-edit" onclick="editPost('${doc.id}')">✏️ แก้ไข</button>
+                <button class="btn-delete" onclick="deletePost('${doc.id}')">🗑️ ลบ</button>
+                <button class="btn-repost" onclick="repostPost('${doc.id}')">🔁 รีโพสต์</button>
+              </div>
+            `;
+            div.appendChild(postDiv);
+          });
+        });
+    }
+
+    // --- แก้ไขโพสต์ ---
+    function editPost(id){
+      const textEl = document.getElementById('text-'+id);
+      const newText = prompt("แก้ไขข้อความโพสต์:", textEl.innerText);
+      if(newText){
+        db.collection("posts").doc(id).update({text:newText});
+      }
+    }
+
+    // --- ลบโพสต์ ---
+    function deletePost(id){
+      if(confirm("คุณแน่ใจว่าต้องการลบโพสต์นี้?")){
+        db.collection("posts").doc(id).delete();
+      }
+    }
+
+    // --- รีโพสต์ ---
+    function repostPost(id){
+      const user = auth.currentUser;
+      if(!user) return;
+      db.collection("posts").doc(id).get().then(doc=>{
+        const data = doc.data();
+        db.collection("posts").add({
+          user_id:user.uid,
+          username:data.username,
+          text:data.text,
+          hashtags:data.hashtags,
+          timestamp:firebase.firestore.FieldValue.serverTimestamp(),
+          likes:0,
+          reposts:0,
+          repost_from:id
+        });
+        // เพิ่ม count repost ของโพสต์ต้นฉบับ
+        db.collection("posts").doc(id).update({
+          reposts: firebase.firestore.FieldValue.increment(1)
+        });
+        alert("รีโพสต์เรียบร้อย ✅");
+      });
+    }
+  </script>
+</body>
+</html>
