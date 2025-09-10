@@ -15,6 +15,7 @@
       padding: 0;
       display: flex;
       justify-content: center;
+      padding-top: 20px;
     }
     .container {
       max-width: 500px;
@@ -31,16 +32,19 @@
     }
     .btn-post { background: #ff80c0; color: white; }
     .btn-post:hover { background: #ff5aa0; }
+    .btn-logout { background: #ff6b6b; color: white; width: 48%; }
+    .btn-profile { background: #7caeff; color: white; width: 48%; margin-left: 4%; }
     .post {
       background: white; border-radius: 15px; padding: 15px;
       margin-bottom: 15px; box-shadow: 0 2px 10px rgba(0,0,0,0.05);
     }
     .actions button {
-      margin-right: 10px; background: #d6a5ff; color: white;
+      margin-right: 8px; padding: 6px 12px; border: none; border-radius: 10px; cursor: pointer; color: white;
     }
-    .actions button:hover { background: #c184ff; }
-    .logout-btn { background: #7caeff; color: white; margin-top: 10px; }
-    .logout-btn:hover { background: #5c8cff; }
+    .btn-like { background: #ff80c0; }
+    .btn-like:hover { background: #ff5aa0; }
+    .btn-repost { background: #d6a5ff; }
+    .btn-repost:hover { background: #c184ff; }
   </style>
 </head>
 <body>
@@ -50,12 +54,15 @@
     <!-- โพสต์ข้อความ -->
     <form id="postForm">
       <textarea id="postText" placeholder="เขียนโพสต์..." required></textarea>
-      <input type="text" id="postHashtag" placeholder="#hashtag">
+      <input type="text" id="postHashtag" placeholder="#hashtag (คั่นด้วยเว้นวรรค)">
       <button type="submit" class="btn-post">โพสต์</button>
     </form>
 
-    <!-- ปุ่ม logout -->
-    <button id="logoutBtn" class="logout-btn">Logout</button>
+    <!-- ปุ่มไปโปรไฟล์ / logout -->
+    <div style="display:flex; justify-content: space-between;">
+      <button class="btn-profile" onclick="goProfile()">โปรไฟล์ของฉัน</button>
+      <button class="btn-logout" id="logoutBtn">Logout</button>
+    </div>
 
     <!-- แสดงโพสต์ -->
     <div id="posts"></div>
@@ -76,10 +83,15 @@
     const auth = firebase.auth();
     const db = firebase.firestore();
 
+    let currentUser = null;
+
     // --- ตรวจสอบ login ---
     auth.onAuthStateChanged(user=>{
       if(!user){
         window.location.href="login.html";
+      } else {
+        currentUser = user;
+        listenPosts();
       }
     });
 
@@ -89,67 +101,75 @@
       window.location.href="login.html";
     });
 
-    // --- Add Post ---
+    // --- ไป profile ---
+    function goProfile(){ window.location.href="profile.html"; }
+
+    // --- โพสต์ข้อความ ---
     document.getElementById('postForm').addEventListener('submit', e=>{
       e.preventDefault();
-      const user = auth.currentUser;
-      if(!user) return;
+      if(!currentUser) return;
 
       const text = document.getElementById('postText').value.trim();
       const hashtags = document.getElementById('postHashtag').value.trim().split(" ");
 
-      db.collection("users").doc(user.uid).get().then(doc=>{
+      if(text==="") return alert("กรุณากรอกข้อความก่อนโพสต์");
+
+      db.collection("users").doc(currentUser.uid).get().then(doc=>{
         const data = doc.data();
-        db.collection("posts").add({
-          user_id: user.uid,
+        return db.collection("posts").add({
+          user_id: currentUser.uid,
           username: data.username,
-          text,
-          hashtags,
+          text: text,
+          hashtags: hashtags,
           timestamp: firebase.firestore.FieldValue.serverTimestamp(),
           likes: 0,
           reposts: 0
         });
-        document.getElementById('postText').value = "";
-        document.getElementById('postHashtag').value = "";
+      }).then(()=>{
+        document.getElementById('postText').value="";
+        document.getElementById('postHashtag').value="";
+      }).catch(err=>{
+        alert("ไม่สามารถโพสต์ได้: " + err.message);
       });
     });
 
-    // --- Listen Posts ---
-    db.collection("posts").orderBy("timestamp","desc")
-      .onSnapshot(snapshot=>{
+    // --- แสดงโพสต์ realtime ---
+    function listenPosts(){
+      db.collection("posts").orderBy("timestamp","desc").onSnapshot(snapshot=>{
         const postsDiv = document.getElementById('posts');
         postsDiv.innerHTML = "";
         snapshot.forEach(doc=>{
           const p = doc.data();
           const postDiv = document.createElement('div');
-          postDiv.className = "post";
-          postDiv.innerHTML = `
+          postDiv.className="post";
+          postDiv.innerHTML=`
             <p><strong>@${p.username}</strong></p>
             <p>${p.text}</p>
             <p style="color:#888;">${(p.hashtags||[]).join(" ")}</p>
             <div class="actions">
-              <button onclick="likePost('${doc.id}')">❤️ ${p.likes||0}</button>
-              <button onclick="repostPost('${doc.id}')">🔁 ${p.reposts||0}</button>
-            </div>`;
+              <button class="btn-like" onclick="likePost('${doc.id}')">❤️ ${p.likes||0}</button>
+              <button class="btn-repost" onclick="repostPost('${doc.id}')">🔁 ${p.reposts||0}</button>
+            </div>
+          `;
           postsDiv.appendChild(postDiv);
         });
       });
-
-    // --- Like Post ---
-    function likePost(id){
-      const ref = db.collection("posts").doc(id);
-      ref.update({likes: firebase.firestore.FieldValue.increment(1)});
     }
 
-    // --- Repost Post ---
+    // --- Like post ---
+    function likePost(id){
+      db.collection("posts").doc(id).update({
+        likes: firebase.firestore.FieldValue.increment(1)
+      });
+    }
+
+    // --- Repost post ---
     function repostPost(id){
-      const user = auth.currentUser;
-      if(!user) return;
-      const ref = db.collection("posts").doc(id);
-      ref.get().then(doc=>{
+      if(!currentUser) return;
+      db.collection("posts").doc(id).get().then(doc=>{
         const data = doc.data();
         db.collection("posts").add({
-          user_id: user.uid,
+          user_id: currentUser.uid,
           username: data.username,
           text: data.text,
           hashtags: data.hashtags,
@@ -158,7 +178,9 @@
           reposts: 0,
           repost_from: id
         });
-        ref.update({reposts: firebase.firestore.FieldValue.increment(1)});
+        db.collection("posts").doc(id).update({
+          reposts: firebase.firestore.FieldValue.increment(1)
+        });
       });
     }
   </script>
