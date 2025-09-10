@@ -81,8 +81,9 @@
 
     // --- ตรวจสอบ login ---
     auth.onAuthStateChanged(user=>{
-      if(!user) window.location.href="login.html";
-      else{
+      if(!user) {
+        window.location.href="login.html";
+      } else {
         currentUser = user;
         loadProfile(user.uid);
       }
@@ -92,6 +93,10 @@
     function loadProfile(uid){
       db.collection("users").doc(uid).get().then(doc=>{
         const data = doc.data();
+        if(!data){
+          alert("เกิดข้อผิดพลาด: ไม่พบข้อมูลผู้ใช้");
+          return;
+        }
         document.getElementById('profileName').innerText = "@"+data.username;
         document.getElementById('profileGender').innerText = data.gender;
         document.getElementById('profileBirthdate').innerText = data.birthdate;
