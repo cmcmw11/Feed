@@ -2,273 +2,66 @@
 <html lang="th">
 <head>
   <meta charset="UTF-8">
-  <title>Feed โลกสวย</title>
-  <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-auth.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-firestore.js"></script>
+  <title>โลกสวย Social</title>
   <style>
     body {
       font-family: 'Arial', sans-serif;
       background: linear-gradient(135deg, #ffd6f6, #d6eaff, #e8d6ff);
       min-height: 100vh;
       margin: 0;
-      padding: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
     }
     .container {
-      max-width: 450px;
-      margin: 40px auto;
+      max-width: 400px;
+      text-align: center;
       background: white;
       border-radius: 20px;
+      padding: 30px;
       box-shadow: 0 4px 20px rgba(0,0,0,0.1);
-      padding: 20px;
     }
-    h2 { text-align: center; color: #555; }
-    input, select, textarea {
-      width: 100%; padding: 10px; margin: 8px 0;
-      border-radius: 10px; border: 1px solid #ddd;
+    h1 {
+      color: #555;
+      margin-bottom: 30px;
     }
     button {
+      width: 100%;
+      padding: 12px;
+      margin: 10px 0;
+      font-size: 16px;
+      border: none;
+      border-radius: 12px;
+      cursor: pointer;
+      transition: 0.3s;
+    }
+    .btn-register {
       background: #ff80c0;
       color: white;
-      border: none;
-      padding: 10px 16px;
-      border-radius: 10px;
-      cursor: pointer;
-      margin-top: 5px;
     }
-    button:hover { background: #ff5aa0; }
-    .post {
-      border: 1px solid #eee;
-      border-radius: 15px;
-      padding: 15px;
-      margin-bottom: 15px;
-      background: #fff;
+    .btn-register:hover { background: #ff5aa0; }
+    .btn-login {
+      background: #7caeff;
+      color: white;
     }
-    .actions button {
-      margin-right: 10px;
-      background: #d6a5ff;
-    }
-    .actions button:hover { background: #c184ff; }
+    .btn-login:hover { background: #5c8cff; }
   </style>
 </head>
 <body>
+  <div class="container">
+    <h1>🌸 โลกสวย Social 🌸</h1>
+    <p>เลือกสิ่งที่คุณต้องการ</p>
+    <button class="btn-register" onclick="goRegister()">สร้างบัญชี</button>
+    <button class="btn-login" onclick="goLogin()">เข้าสู่ระบบ</button>
+  </div>
 
-<div class="container" id="registerPage">
-  <h2>สมัครสมาชิก</h2>
-  <form id="registerForm">
-    <input type="text" id="regUsername" placeholder="Username" required>
-    <input type="password" id="regPassword" placeholder="Password" required>
-    <select id="regGender">
-      <option value="male">ชาย</option>
-      <option value="female">หญิง</option>
-      <option value="other">อื่นๆ</option>
-    </select>
-    <input type="date" id="regBirthdate" required>
-    <button type="submit">สมัครสมาชิก</button>
-  </form>
-</div>
-
-<div class="container" id="welcomePage" style="display:none;">
-  <h2>สมัครเรียบร้อย 🎉</h2>
-  <p id="welcomeInfo"></p>
-  <button onclick="goLogin()">ไปหน้าเข้าสู่ระบบ</button>
-</div>
-
-<div class="container" id="loginPage" style="display:none;">
-  <h2>เข้าสู่ระบบ</h2>
-  <form id="loginForm">
-    <input type="text" id="loginUsername" placeholder="Username" required>
-    <input type="password" id="loginPassword" placeholder="Password" required>
-    <button type="submit">Login</button>
-  </form>
-</div>
-
-<div class="container" id="profilePage" style="display:none;">
-  <h2>สวัสดี <span id="profileName"></span> 👋</h2>
-  <p>เพศ: <span id="profileGender"></span></p>
-  <p>วันเกิด: <span id="profileBirthdate"></span></p>
-  <form id="editProfile">
-    <input type="text" id="newUsername" placeholder="แก้ไขชื่อผู้ใช้">
-    <input type="text" id="bio" placeholder="แนะนำตัว">
-    <button type="submit">บันทึกโปรไฟล์</button>
-  </form>
-  <button onclick="showFeed()">ไปที่ Feed</button>
-  <button id="logoutBtn">Logout</button>
-</div>
-
-<div class="container" id="feed" style="display:none;">
-  <h2>🌸 Feed 🌸</h2>
-  <form id="postForm">
-    <textarea id="postText" placeholder="เขียนโพสต์..."></textarea>
-    <input type="text" id="postHashtag" placeholder="#hashtag">
-    <button type="submit">โพสต์</button>
-  </form>
-  <div id="posts"></div>
-</div>
-
-<script>
-  // --- Firebase Config ---
-  const firebaseConfig = {
-    apiKey: "AIzaSyCXcq9coy4Ah39DTzN9OmZc-nm8JBHPapA",
-    authDomain: "feed-32f94.firebaseapp.com",
-    projectId: "feed-32f94",
-    storageBucket: "feed-32f94.appspot.com",
-    messagingSenderId: "939495314483",
-    appId: "1:939495314483:web:2eacab83fb89a67812ff46",
-    measurementId: "G-M5T6KE9YSE"
-  };
-  firebase.initializeApp(firebaseConfig);
-  const auth = firebase.auth();
-  const db = firebase.firestore();
-
-  // --- Register ---
-  document.getElementById('registerForm').addEventListener('submit', e=>{
-    e.preventDefault();
-    const username=document.getElementById('regUsername').value.trim();
-    const password=document.getElementById('regPassword').value.trim();
-    const gender=document.getElementById('regGender').value;
-    const birthdate=document.getElementById('regBirthdate').value;
-    const email = username + "@example.com";
-
-    auth.createUserWithEmailAndPassword(email, password)
-      .then(userCredential=>{
-        const user=userCredential.user;
-        return db.collection('users').doc(user.uid).set({username, gender, birthdate});
-      })
-      .then(()=>{
-        document.getElementById('registerPage').style.display='none';
-        document.getElementById('welcomePage').style.display='block';
-        document.getElementById('welcomeInfo').innerText=`ชื่อ: @${username}, เพศ: ${gender}, วันเกิด: ${birthdate}`;
-      })
-      .catch(err=>alert("สมัครไม่สำเร็จ: "+err.message));
-  });
-
-  function goLogin(){
-    document.getElementById('welcomePage').style.display='none';
-    document.getElementById('loginPage').style.display='block';
-  }
-
-  // --- Login ---
-  document.getElementById('loginForm').addEventListener('submit', e=>{
-    e.preventDefault();
-    const username=document.getElementById('loginUsername').value.trim();
-    const password=document.getElementById('loginPassword').value.trim();
-    const email = username + "@example.com";
-
-    auth.signInWithEmailAndPassword(email, password)
-      .then(userCredential=>{
-        const user=userCredential.user;
-        return db.collection('users').doc(user.uid).get();
-      })
-      .then(doc=>{
-        const data=doc.data();
-        document.getElementById('loginPage').style.display='none';
-        document.getElementById('profilePage').style.display='block';
-        document.getElementById('profileName').innerText="@"+data.username;
-        document.getElementById('profileGender').innerText=data.gender;
-        document.getElementById('profileBirthdate').innerText=data.birthdate;
-      })
-      .catch(err=>alert("เข้าสู่ระบบไม่สำเร็จ: "+err.message));
-  });
-
-  // --- Edit Profile ---
-  document.getElementById('editProfile').addEventListener('submit', e=>{
-    e.preventDefault();
-    const user=auth.currentUser;
-    if(!user) return;
-    const newUsername=document.getElementById('newUsername').value.trim();
-    const bio=document.getElementById('bio').value.trim();
-    let updateData={};
-    if(newUsername) updateData.username=newUsername;
-    if(bio) updateData.bio=bio;
-    db.collection('users').doc(user.uid).update(updateData).then(()=>{
-      alert("อัปเดตข้อมูลแล้ว");
-    });
-  });
-
-  // --- Logout ---
-  document.getElementById('logoutBtn').addEventListener('click', ()=>{
-    auth.signOut();
-    document.getElementById('profilePage').style.display='none';
-    document.getElementById('loginPage').style.display='block';
-  });
-
-  // --- Show Feed ---
-  function showFeed(){
-    document.getElementById('profilePage').style.display='none';
-    document.getElementById('feed').style.display='block';
-    listenPosts();
-  }
-
-  // --- Add Post ---
-  document.getElementById('postForm').addEventListener('submit', e=>{
-    e.preventDefault();
-    const user=auth.currentUser;
-    if(!user) return;
-    const text=document.getElementById('postText').value.trim();
-    const hashtags=document.getElementById('postHashtag').value.trim().split(" ");
-    db.collection("users").doc(user.uid).get().then(doc=>{
-      const data=doc.data();
-      db.collection("posts").add({
-        user_id:user.uid,
-        username:data.username,
-        text, hashtags,
-        timestamp:firebase.firestore.FieldValue.serverTimestamp(),
-        likes:0, reposts:0
-      });
-      document.getElementById('postText').value="";
-      document.getElementById('postHashtag').value="";
-    });
-  });
-
-  // --- Listen Posts ---
-  function listenPosts(){
-    db.collection("posts").orderBy("timestamp","desc").onSnapshot(snapshot=>{
-      const postsDiv=document.getElementById('posts');
-      postsDiv.innerHTML="";
-      snapshot.forEach(doc=>{
-        const p=doc.data();
-        const postDiv=document.createElement('div');
-        postDiv.className="post";
-        postDiv.innerHTML=`
-          <p><strong>@${p.username}</strong></p>
-          <p>${p.text}</p>
-          <p style="color:#888;">${(p.hashtags||[]).join(" ")}</p>
-          <div class="actions">
-            <button onclick="likePost('${doc.id}')">❤️ ${p.likes||0}</button>
-            <button onclick="repostPost('${doc.id}')">🔁 ${p.reposts||0}</button>
-          </div>`;
-        postsDiv.appendChild(postDiv);
-      });
-    });
-  }
-
-  // --- Like Post ---
-  function likePost(id){
-    const ref=db.collection("posts").doc(id);
-    ref.update({likes:firebase.firestore.FieldValue.increment(1)});
-  }
-
-  // --- Repost Post ---
-  function repostPost(id){
-    const user=auth.currentUser;
-    if(!user) return;
-    const ref=db.collection("posts").doc(id);
-    ref.get().then(doc=>{
-      const data=doc.data();
-      db.collection("posts").add({
-        user_id:user.uid,
-        username:data.username,
-        text:data.text,
-        hashtags:data.hashtags,
-        timestamp:firebase.firestore.FieldValue.serverTimestamp(),
-        likes:0,
-        reposts:0,
-        repost_from:id
-      });
-      ref.update({reposts:firebase.firestore.FieldValue.increment(1)});
-    });
-  }
-</script>
+  <script>
+    function goRegister(){
+      window.location.href = "register.html"; 
+    }
+    function goLogin(){
+      window.location.href = "login.html"; 
+    }
+  </script>
 </body>
 </html>
