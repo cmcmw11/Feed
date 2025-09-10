@@ -11,6 +11,7 @@
 body { font-family:'Quicksand',sans-serif; background:#f0f2f5; margin:0; padding:20px; display:flex; justify-content:center; }
 .container { width:400px; }
 input, select, textarea { width:100%; padding:10px; margin:5px 0; border-radius:10px; border:1px solid #ddd; font-size:14px; }
+textarea { resize:none; }
 .card { background:#fff; border-radius:15px; padding:15px; margin-bottom:15px; box-shadow:0 4px 10px rgba(0,0,0,0.1); }
 .card p { margin:5px 0; }
 .card .actions { display:flex; justify-content:space-between; margin-top:10px; }
@@ -20,18 +21,43 @@ button:hover { opacity:0.8; }
 .category-filter button { padding:5px 10px; background:#ffefef; cursor:pointer; border-radius:10px; font-size:12px; }
 .comment-section input { width:70%; display:inline-block; }
 .comment-section button { width:25%; display:inline-block; }
+.post-box { background:#fff; border-radius:15px; padding:10px; margin-bottom:15px; box-shadow:0 4px 10px rgba(0,0,0,0.1); }
+.menu-bar { display:flex; justify-content:space-around; margin-top:15px; }
+.menu-bar span { font-size:28px; cursor:pointer; }
 </style>
 </head>
 <body>
 <div class="container">
-  <input type="text" id="searchUser" placeholder="ค้นหาเพื่อน @username...">
+
+  <!-- ช่องโพสต์ใหม่ -->
+  <div class="post-box">
+    <textarea id="newPost" placeholder="เขียนข้อความ..."></textarea>
+    <select id="categorySelect">
+      <option value="โลกสวย">โลกสวย</option>
+      <option value="แรงบันดาลใจ">แรงบันดาลใจ</option>
+      <option value="ขำขัน">ขำขัน</option>
+    </select>
+    <button onclick="createPost()">โพสต์</button>
+  </div>
+
+  <!-- ตัวกรองหมวดหมู่ -->
   <div class="category-filter">
     <button onclick="filterCategory('ทั้งหมด')">ทั้งหมด</button>
     <button onclick="filterCategory('โลกสวย')">โลกสวย</button>
     <button onclick="filterCategory('แรงบันดาลใจ')">แรงบันดาลใจ</button>
     <button onclick="filterCategory('ขำขัน')">ขำขัน</button>
   </div>
+
+  <!-- ฟีดโพสต์ -->
   <div id="posts"></div>
+
+  <!-- เมนูด้านล่าง -->
+  <div class="menu-bar">
+    <span onclick="goFeed()">🌸</span>
+    <span onclick="goMyPosts()">💖</span>
+    <span onclick="goProfile()">✨</span>
+    <span onclick="logout()">🌈</span>
+  </div>
 </div>
 
 <script>
@@ -56,9 +82,23 @@ auth.onAuthStateChanged(user=>{
   listenPosts();
 });
 
-document.getElementById('searchUser').addEventListener('keypress', e=>{
-  if(e.key==='Enter') window.location.href='people.html?search='+document.getElementById('searchUser').value.trim();
-});
+function createPost(){
+  const text = document.getElementById('newPost').value.trim();
+  const category = document.getElementById('categorySelect').value;
+  if(!text) return alert("กรุณาเขียนข้อความก่อนโพสต์");
+  db.collection("posts").add({
+    user_id: currentUser.uid,
+    username: currentUser.displayName || currentUser.email,
+    text: text,
+    category: category,
+    timestamp: Date.now(),
+    likes: 0,
+    reposts: 0,
+    comments: []
+  }).then(()=>{
+    document.getElementById('newPost').value="";
+  });
+}
 
 function filterCategory(cat){
   selectedCategory = cat;
@@ -71,7 +111,7 @@ function listenPosts(){
     postsDiv.innerHTML="";
     snapshot.forEach(doc=>{
       const p = doc.data();
-      if(selectedCategory!=='ทั้งหมด' && p.category !== selectedCategory) return;
+      if(selectedCategory!=='ทั้งหมด' && p.category!==selectedCategory) return;
 
       const date = new Date(p.timestamp);
       const dateStr = date.toLocaleDateString('th-TH');
@@ -109,15 +149,12 @@ function listenPosts(){
 }
 
 function likePost(postId){
-  const postRef = db.collection("posts").doc(postId);
-  postRef.update({ likes: firebase.firestore.FieldValue.increment(1) });
+  db.collection("posts").doc(postId).update({ likes: firebase.firestore.FieldValue.increment(1) });
 }
 function repostPost(postId){
-  const postRef = db.collection("posts").doc(postId);
-  postRef.update({ reposts: firebase.firestore.FieldValue.increment(1) });
+  db.collection("posts").doc(postId).update({ reposts: firebase.firestore.FieldValue.increment(1) });
 }
 function deletePost(postId){
-  if(!currentUser) return;
   db.collection("posts").doc(postId).get().then(doc=>{
     if(doc.exists && doc.data().user_id===currentUser.uid){
       return db.collection("posts").doc(postId).delete();
@@ -137,6 +174,13 @@ function addComment(postId){
     })
   }).then(()=>{ input.value=""; });
 }
+
+// เมนูด้านล่าง
+function goFeed(){ window.location.href="feed.html"; }
+function goMyPosts(){ window.location.href="myposts.html"; }
+function goProfile(){ window.location.href="profile.html"; }
+function logout(){ auth.signOut(); window.location.href="login.html"; }
+
 </script>
 </body>
 </html>
