@@ -2,26 +2,33 @@
 <html lang="th">
 <head>
 <meta charset="UTF-8">
-<title>ฟีด - โลกสวย Social</title>
+<title>Feed - โลกสวย Social</title>
 <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
 <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-auth.js"></script>
 <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-firestore.js"></script>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Quicksand:wght@400;600&display=swap');
-body { font-family: 'Quicksand', sans-serif; background:#f0f2f5; margin:0; padding:0; display:flex; justify-content:center; padding-top:30px; }
+body { font-family:'Quicksand',sans-serif; background:#f0f2f5; margin:0; padding:20px; display:flex; justify-content:center; }
 .container { width:400px; }
+input, select { width:100%; padding:10px; margin:5px 0; border-radius:10px; border:1px solid #ddd; font-size:14px; }
 .card { background:#fff; border-radius:15px; padding:15px; margin-bottom:15px; box-shadow:0 4px 10px rgba(0,0,0,0.1); }
 .card p { margin:5px 0; }
 .card .actions { display:flex; justify-content:space-between; margin-top:10px; }
 button { border:none; border-radius:10px; padding:5px 10px; cursor:pointer; }
 button:hover { opacity:0.8; }
-input, textarea { width:100%; padding:10px; margin:5px 0; border-radius:10px; border:1px solid #ddd; font-size:14px; }
-#searchUser { margin-bottom:15px; padding:10px; border-radius:10px; border:1px solid #ddd; width:100%; }
+.category-filter { display:flex; justify-content:space-around; margin-bottom:10px; }
+.category-filter button { padding:5px 10px; background:#ffefef; cursor:pointer; border-radius:10px; font-size:12px; }
 </style>
 </head>
 <body>
 <div class="container">
   <input type="text" id="searchUser" placeholder="ค้นหาเพื่อน @username...">
+  <div class="category-filter">
+    <button onclick="filterCategory('ทั้งหมด')">ทั้งหมด</button>
+    <button onclick="filterCategory('โลกสวย')">โลกสวย</button>
+    <button onclick="filterCategory('แรงบันดาลใจ')">แรงบันดาลใจ</button>
+    <button onclick="filterCategory('ขำขัน')">ขำขัน</button>
+  </div>
   <div id="posts"></div>
 </div>
 
@@ -39,13 +46,22 @@ firebase.initializeApp(firebaseConfig);
 const auth = firebase.auth();
 const db = firebase.firestore();
 let currentUser = null;
+let selectedCategory = 'ทั้งหมด';
 
-// ตรวจสอบผู้ใช้
 auth.onAuthStateChanged(user=>{
   if(!user) window.location.href="login.html";
   currentUser = user;
   listenPosts();
 });
+
+document.getElementById('searchUser').addEventListener('keypress', e=>{
+  if(e.key==='Enter') window.location.href='people.html?search='+document.getElementById('searchUser').value.trim();
+});
+
+function filterCategory(cat){
+  selectedCategory = cat;
+  listenPosts();
+}
 
 function listenPosts(){
   db.collection("posts").orderBy("timestamp","desc").onSnapshot(snapshot=>{
@@ -53,33 +69,24 @@ function listenPosts(){
     postsDiv.innerHTML="";
     snapshot.forEach(doc=>{
       const p = doc.data();
-      // filter search
-      const searchText = document.getElementById('searchUser').value.trim().toLowerCase();
-      if(searchText && !p.username.toLowerCase().includes(searchText.replace("@",""))) return;
+      // filter category
+      if(selectedCategory!=='ทั้งหมด' && p.category !== selectedCategory) return;
+
+      const date = new Date(p.timestamp);
+      const dateStr = date.toLocaleDateString('th-TH');
 
       const card = document.createElement('div');
-      card.className = "card";
+      card.className="card";
       let deleteBtn = "";
-      if(currentUser && currentUser.uid === p.user_id) deleteBtn = `<button onclick="deletePost('${doc.id}')">🗑 ลบ</button>`;
-      
-      let commentsHtml = "";
-      if(p.comments) p.comments.forEach(c=>{
-        commentsHtml += `<p><strong>@${c.username}:</strong> ${c.text}</p>`;
-      });
-
+      if(currentUser && currentUser.uid===p.user_id) deleteBtn = `<button onclick="deletePost('${doc.id}')">🗑 ลบ</button>`;
       card.innerHTML = `
-        <p><strong>@${p.username}</strong></p>
+        <p><strong>@${p.username}</strong> - <em>${dateStr}</em></p>
         <p>${p.text}</p>
-        <p style="color:#888;">${(p.hashtags||[]).join(" ")}</p>
+        <p style="color:#888;">หมวดหมู่: ${p.category}</p>
         <div class="actions">
           <button onclick="likePost('${doc.id}')">❤️ ${p.likes||0}</button>
           <button onclick="repostPost('${doc.id}')">🔁 ${p.reposts||0}</button>
           ${deleteBtn}
-        </div>
-        <div>
-          ${commentsHtml}
-          <input type="text" placeholder="แสดงความคิดเห็น..." id="commentInput_${doc.id}">
-          <button onclick="addComment('${doc.id}')">ส่ง</button>
         </div>
       `;
       postsDiv.appendChild(card);
@@ -87,41 +94,21 @@ function listenPosts(){
   });
 }
 
-// เพิ่ม Like
 function likePost(postId){
   const postRef = db.collection("posts").doc(postId);
   postRef.update({ likes: firebase.firestore.FieldValue.increment(1) });
 }
-
-// เพิ่ม Repost
 function repostPost(postId){
   const postRef = db.collection("posts").doc(postId);
   postRef.update({ reposts: firebase.firestore.FieldValue.increment(1) });
 }
-
-// ลบโพสต์
 function deletePost(postId){
   if(!currentUser) return;
   db.collection("posts").doc(postId).get().then(doc=>{
-    if(doc.exists && doc.data().user_id === currentUser.uid){
+    if(doc.exists && doc.data().user_id===currentUser.uid){
       return db.collection("posts").doc(postId).delete();
-    } else { alert("คุณไม่สามารถลบโพสต์นี้ได้"); }
+    } else alert("คุณไม่สามารถลบโพสต์นี้ได้");
   });
-}
-
-// เพิ่มคอมเมนต์
-function addComment(postId){
-  const input = document.getElementById('commentInput_'+postId);
-  const text = input.value.trim();
-  if(!text) return;
-  db.collection("posts").doc(postId).update({
-    comments: firebase.firestore.FieldValue.arrayUnion({
-      user_id: currentUser.uid,
-      username: currentUser.displayName||currentUser.email,
-      text: text,
-      timestamp: Date.now()
-    })
-  }).then(()=>{ input.value=""; });
 }
 </script>
 </body>
