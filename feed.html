@@ -51,7 +51,7 @@
   <div class="container">
     <h2>🌸 Feed โลกสวย 🌸</h2>
 
-    <!-- โพสต์ข้อความ -->
+    <!-- ฟอร์มโพสต์ -->
     <form id="postForm">
       <textarea id="postText" placeholder="เขียนโพสต์..." required></textarea>
       <input type="text" id="postHashtag" placeholder="#hashtag (คั่นด้วยเว้นวรรค)">
@@ -114,8 +114,14 @@
 
       if(text==="") return alert("กรุณากรอกข้อความก่อนโพสต์");
 
-      db.collection("users").doc(currentUser.uid).get().then(doc=>{
+      db.collection("users").doc(currentUser.uid).get()
+      .then(doc => {
         const data = doc.data();
+        if(!data || !data.username){
+          alert("เกิดข้อผิดพลาด: ไม่พบข้อมูลผู้ใช้");
+          return;
+        }
+
         return db.collection("posts").add({
           user_id: currentUser.uid,
           username: data.username,
@@ -125,10 +131,12 @@
           likes: 0,
           reposts: 0
         });
-      }).then(()=>{
-        document.getElementById('postText').value="";
-        document.getElementById('postHashtag').value="";
-      }).catch(err=>{
+      })
+      .then(() => {
+        document.getElementById('postText').value = "";
+        document.getElementById('postHashtag').value = "";
+      })
+      .catch(err => {
         alert("ไม่สามารถโพสต์ได้: " + err.message);
       });
     });
@@ -186,3 +194,4 @@
   </script>
 </body>
 </html>
+
