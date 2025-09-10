@@ -12,6 +12,7 @@ body{font-family:sans-serif;padding:20px;}
 input,textarea,select,button{display:block;margin:5px 0;}
 #feed{margin-top:20px;}
 .post{border:1px solid #ccc;padding:10px;margin:10px 0;}
+.repost-btn{margin-top:5px;cursor:pointer;color:blue;}
 </style>
 </head>
 <body>
@@ -26,13 +27,6 @@ input,textarea,select,button{display:block;margin:5px 0;}
     <option value="other">อื่นๆ</option>
   </select>
   <input type="date" id="regBirthdate" required>
-  <select id="regProfilePic">
-    <option value="pic1.png">รูป 1</option>
-    <option value="pic2.png">รูป 2</option>
-    <option value="pic3.png">รูป 3</option>
-    <option value="pic4.png">รูป 4</option>
-    <option value="pic5.png">รูป 5</option>
-  </select>
   <button type="submit">สมัครสมาชิก</button>
 </form>
 
@@ -55,27 +49,24 @@ input,textarea,select,button{display:block;margin:5px 0;}
 </div>
 
 <script>
-// Register
+// --- Register ---
 document.getElementById('registerForm').addEventListener('submit', e=>{
   e.preventDefault();
   const username=document.getElementById('regUsername').value;
   const password=document.getElementById('regPassword').value;
   const gender=document.getElementById('regGender').value;
   const birthdate=document.getElementById('regBirthdate').value;
-  const profilePic=document.getElementById('regProfilePic').value;
 
   auth.createUserWithEmailAndPassword(username+'@example.com', password)
     .then(userCredential=>{
       const user=userCredential.user;
-      db.collection('users').doc(user.uid).set({
-        username, gender, birthdate, profilePic
-      });
+      db.collection('users').doc(user.uid).set({username, gender, birthdate});
       alert('สมัครสมาชิกเรียบร้อย');
     })
     .catch(err=>alert(err.message));
 });
 
-// Login
+// --- Login ---
 document.getElementById('loginForm').addEventListener('submit', e=>{
   e.preventDefault();
   const username=document.getElementById('loginUsername').value;
@@ -83,51 +74,77 @@ document.getElementById('loginForm').addEventListener('submit', e=>{
   auth.signInWithEmailAndPassword(username+'@example.com', password)
     .then(userCredential=>{
       document.getElementById('feed').style.display='block';
-      loadPosts();
+      listenPosts(); // ใช้ realtime listener
     })
     .catch(err=>alert(err.message));
 });
 
-// Logout
+// --- Logout ---
 document.getElementById('logoutBtn').addEventListener('click', ()=>{
   auth.signOut();
   document.getElementById('feed').style.display='none';
 });
 
-// Post
+// --- Post ---
 document.getElementById('postForm').addEventListener('submit', e=>{
   e.preventDefault();
   const text=document.getElementById('postText').value;
   const hashtags=document.getElementById('postHashtag').value.split(' ').filter(h=>h);
   const user=auth.currentUser;
   if(!user) return;
+
   db.collection('posts').add({
     user_id:user.uid,
     text,
     hashtags,
     timestamp:Date.now(),
     seen_count:0,
-    repost_count:0
+    repost_count:0,
+    repost_from:null
   });
   document.getElementById('postText').value='';
   document.getElementById('postHashtag').value='';
-  loadPosts();
 });
 
-// Load posts
-function loadPosts(){
-  const postsDiv=document.getElementById('posts');
-  postsDiv.innerHTML='';
-  db.collection('posts').orderBy('timestamp','desc').get()
-    .then(snapshot=>{
+// --- Realtime Posts & Seen Count ---
+function listenPosts(){
+  db.collection('posts').orderBy('timestamp','desc')
+    .onSnapshot(snapshot=>{
+      const postsDiv=document.getElementById('posts');
+      postsDiv.innerHTML='';
       snapshot.forEach(doc=>{
         const data=doc.data();
         const div=document.createElement('div');
         div.className='post';
-        div.innerHTML=`<b>${data.user_id}</b><p>${data.text}</p><p>${data.hashtags.join(' ')}</p><small>ผู้เห็น: ${data.seen_count}</small>`;
+        let repostText='';
+        if(data.repost_from) repostText=`<small>รีโพสต์จาก ${data.repost_from}</small><br>`;
+        div.innerHTML=`<b>${data.user_id}</b>${repostText}<p>${data.text}</p><p>${data.hashtags.join(' ')}</p>
+          <small>ผู้เห็น: <span id="seen-${doc.id}">${data.seen_count}</span> | รีโพสต์: ${data.repost_count}</small>
+          <div class="repost-btn" onclick="repost('${doc.id}','${data.text}')">รีโพสต์</div>`;
         postsDiv.appendChild(div);
+
+        // อัปเดต seen_count แบบ realtime
+        const seenRef=db.collection('posts').doc(doc.id);
+        seenRef.update({seen_count:data.seen_count+1});
       });
     });
+}
+
+// --- Repost ---
+function repost(postId,text){
+  const user=auth.currentUser;
+  if(!user) return;
+  const postRef=db.collection('posts').doc(postId);
+  postRef.update({repost_count:firebase.firestore.FieldValue.increment(1)});
+  db.collection('posts').add({
+    user_id:user.uid,
+    text,
+    hashtags:[], // รีโพสต์ ไม่มีแฮชแท็กเดิมก็ได้
+    timestamp:Date.now(),
+    seen_count:0,
+    repost_count:0,
+    repost_from:postId
+  });
 }
 </script>
 
