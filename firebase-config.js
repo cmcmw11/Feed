@@ -14,3 +14,16 @@ const firebaseConfig = {
 firebase.initializeApp(firebaseConfig);
 const auth = firebase.auth();
 const db = firebase.firestore();
+
+posts: {
+  post_id: {
+    user_id: "uid",
+    text: "ข้อความโพสต์",
+    hashtags: ["#โลกสวย"],
+    timestamp: 1234567890,
+    seen_count: 0,
+    repost_count: 0,
+    repost_from: null  // ถ้าเป็นรีโพสต์จะเก็บ post_id ต้นฉบับ
+  }
+}
+
