@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8">
+  <title>โปรไฟล์ - โลกสวย Social</title>
+  <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-auth.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-firestore.js"></script>
+  <style>
+    body {
+      font-family: 'Arial', sans-serif;
+      background: linear-gradient(135deg, #ffd6f6, #d6eaff, #e8d6ff);
+      min-height: 100vh;
+      margin: 0;
+      display: flex;
+      justify-content: center;
+      padding: 20px 0;
+    }
+    .container {
+      max-width: 450px;
+      width: 100%;
+      background: white;
+      border-radius: 20px;
+      padding: 25px;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+    }
+    h2 { text-align: center; color: #555; margin-bottom: 15px; }
+    input, textarea {
+      width: 100%; padding: 10px; margin: 8px 0;
+      border-radius: 10px; border: 1px solid #ddd;
+    }
+    button {
+      width: 100%; padding: 12px; border: none; border-radius: 12px; cursor: pointer;
+      margin-top: 8px; font-size: 16px;
+    }
+    .btn-edit { background: #7caeff; color: white; }
+    .btn-edit:hover { background: #5c8cff; }
+    .btn-feed { background: #d6a5ff; color: white; }
+    .btn-feed:hover { background: #c184ff; }
+    .btn-myposts { background: #ff80c0; color: white; }
+    .btn-myposts:hover { background: #ff5aa0; }
+    .btn-logout { background: #ff6b6b; color: white; }
+    .btn-logout:hover { background: #ff4a4a; }
+    p { margin: 5px 0; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h2>โปรไฟล์ของคุณ</h2>
+    <p>Username: <span id="profileName"></span></p>
+    <p>เพศ: <span id="profileGender"></span></p>
+    <p>วันเกิด: <span id="profileBirthdate"></span></p>
+    <p>Bio: <span id="profileBio"></span></p>
+
+    <h3>แก้ไขโปรไฟล์</h3>
+    <input type="text" id="newUsername" placeholder="แก้ไขชื่อผู้ใช้">
+    <textarea id="bio" placeholder="แก้ไขแนะนำตัว"></textarea>
+    <button class="btn-edit" id="saveProfileBtn">บันทึกโปรไฟล์</button>
+
+    <button class="btn-myposts" onclick="goMyPosts()">ดูโพสต์ของฉัน</button>
+    <button class="btn-feed" onclick="goFeed()">ไป Feed</button>
+    <button class="btn-logout" id="logoutBtn">Logout</button>
+  </div>
+
+  <script>
+    // --- Firebase Config ---
+    const firebaseConfig = {
+      apiKey: "AIzaSyCXcq9coy4Ah39DTzN9OmZc-nm8JBHPapA",
+      authDomain: "feed-32f94.firebaseapp.com",
+      projectId: "feed-32f94",
+      storageBucket: "feed-32f94.appspot.com",
+      messagingSenderId: "939495314483",
+      appId: "1:939495314483:web:2eacab83fb89a67812ff46",
+      measurementId: "G-M5T6KE9YSE"
+    };
+    firebase.initializeApp(firebaseConfig);
+    const auth = firebase.auth();
+    const db = firebase.firestore();
+
+    let currentUser = null;
+
+    // --- ตรวจสอบ login ---
+    auth.onAuthStateChanged(user=>{
+      if(!user) window.location.href="login.html";
+      else{
+        currentUser = user;
+        loadProfile(user.uid);
+      }
+    });
+
+    // --- Load profile ---
+    function loadProfile(uid){
+      db.collection("users").doc(uid).get().then(doc=>{
+        const data = doc.data();
+        document.getElementById('profileName').innerText = "@"+data.username;
+        document.getElementById('profileGender').innerText = data.gender;
+        document.getElementById('profileBirthdate').innerText = data.birthdate;
+        document.getElementById('profileBio').innerText = data.bio || "";
+        document.getElementById('newUsername').value = data.username;
+        document.getElementById('bio').value = data.bio || "";
+      });
+    }
+
+    // --- Save profile ---
+    document.getElementById('saveProfileBtn').addEventListener('click', ()=>{
+      const newUsername = document.getElementById('newUsername').value.trim();
+      const bio = document.getElementById('bio').value.trim();
+      if(currentUser){
+        db.collection("users").doc(currentUser.uid).update({
+          username: newUsername,
+          bio: bio
+        }).then(()=>{
+          alert("อัปเดตโปรไฟล์เรียบร้อย ✅");
+          loadProfile(currentUser.uid);
+        });
+      }
+    });
+
+    // --- ปุ่มไป myposts ---
+    function goMyPosts(){ window.location.href="myposts.html"; }
+
+    // --- ปุ่มไป feed ---
+    function goFeed(){ window.location.href="feed.html"; }
+
+    // --- Logout ---
+    document.getElementById('logoutBtn').addEventListener('click', ()=>{
+      auth.signOut();
+      window.location.href="login.html";
+    });
+  </script>
+</body>
+</html>
